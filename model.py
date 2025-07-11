@@ -6,11 +6,14 @@ import pandas as pd
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
+
 from utils import compute_indicators, get_candle_data
+import broker
+import config
 
 MODEL_FILE = "model.pkl"
-CANDLE_COUNT = 1500  # Number of historical candles to use
-CONFIDENCE_THRESHOLD = 0.55  # Min confidence to trigger trades
+CANDLE_COUNT = 1500
+CONFIDENCE_THRESHOLD = 0.55
 
 def load_model():
     if os.path.exists(MODEL_FILE):
@@ -34,12 +37,14 @@ def create_features(df):
 def retrain_model():
     try:
         print("[MODEL] Fetching candle data...")
-        df = get_candle_data(count=CANDLE_COUNT)
+        candles = broker.get_candles(instrument=config.TRADING_INSTRUMENT, count=CANDLE_COUNT)
+        df = get_candle_data(candles)
         X, y, df_full = create_features(df)
 
         print("[MODEL] Training XGBoost classifier...")
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        model = XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1, random_state=42, use_label_encoder=False, eval_metric="logloss")
+        model = XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1,
+                              random_state=42, use_label_encoder=False, eval_metric="logloss")
         model.fit(X_train, y_train)
 
         save_model(model)
@@ -50,7 +55,8 @@ def retrain_model():
 
 def predict_from_latest_candles():
     try:
-        df = get_candle_data(count=50)
+        candles = broker.get_candles(instrument=config.TRADING_INSTRUMENT, count=50)
+        df = get_candle_data(candles)
         df = compute_indicators(df)
         last_row = df.iloc[-1:]
 
