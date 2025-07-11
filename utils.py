@@ -23,7 +23,6 @@ def log_scheduler_message(message):
     now = datetime.utcnow()
     timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    # Reset the file at 00:00 UTC
     if now.strftime("%H:%M") == "00:00":
         with open(SCHEDULER_LOG_PATH, "w") as f:
             f.write(f"{timestamp} - {message}\n")
@@ -32,7 +31,6 @@ def log_scheduler_message(message):
             f.write(f"{timestamp} - {message}\n")
 
 def format_gbp(amount):
-    """Format a float as British Pound currency (e.g., £1,234.56)"""
     return f"£{amount:,.2f}"
 
 def get_candle_data(count=1500, granularity="M15"):
@@ -64,3 +62,21 @@ def get_candle_data(count=1500, granularity="M15"):
     df["time"] = pd.to_datetime(df["time"])
     df.set_index("time", inplace=True)
     return df
+
+def compute_indicators(df):
+    df = df.copy()
+    df["sma_5"] = df["close"].rolling(window=5).mean()
+    df["sma_15"] = df["close"].rolling(window=15).mean()
+    df["rsi"] = compute_rsi(df["close"], 14)
+    df["roc"] = df["close"].pct_change(periods=5)
+    df["hour"] = df.index.hour
+    return df.dropna()
+
+def compute_rsi(series, period=14):
+    delta = series.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.rolling(window=period).mean()
+    avg_loss = loss.rolling(window=period).mean()
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
