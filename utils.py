@@ -34,8 +34,8 @@ def format_gbp(amount):
     """Format a float as British Pound currency (e.g., £1,234.56)"""
     return f"£{amount:,.2f}"
 
-def get_candle_data(candles, timeframe="M15"):
-    """Converts OANDA candle API response into a clean DataFrame"""
+def get_candle_data(candles, timeframe="M15", count=None):
+    """Converts OANDA candle API response into a clean DataFrame."""
     data = []
     for candle in candles:
         if candle['complete']:
@@ -47,7 +47,12 @@ def get_candle_data(candles, timeframe="M15"):
                 'close': float(candle['mid']['c']),
                 'volume': int(candle['volume']),
             })
+
     df = pd.DataFrame(data)
+
+    if count is not None:
+        df = df.tail(count)
+
     df['time'] = pd.to_datetime(df['time'])
     df.set_index('time', inplace=True)
     return df
